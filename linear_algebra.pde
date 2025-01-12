@@ -43,6 +43,12 @@ final int LINEAR_CHECK_DURATION = 3000; // 3 seconds in milliseconds
 float linearMovementStartTime = 0;
 boolean isCurrentlyLinear = false;
 
+// for linear algebra
+float angle = 0;  // Current rotation angle
+float scaleX = 1.0;  // Current X scale
+float scaleY = 1.0;  // Current Y scale
+PMatrix2D transformMatrix;  // Transformation matrix
+
 void setup() {
     size(800, 600);
     // Load all images
@@ -283,33 +289,63 @@ void draw() {
     drawLevelButtons();
     
     if (!showMathProblem) {
-        // Move and draw the image
+        // Move and draw rotating image
         moveImage();
-        image(images[currentImage], imageX, imageY, 100, 100);
         
         // Display instructions
         fill(0);
         textSize(20);
         textAlign(CENTER);
-        text("Click on the moving image to proceed", width/2, 30);
+        text("Click on the rotating image to proceed", width/2, 30);
         text("Current Level: " + levels[currentLevel], width/2, 60);
     } else {
-        // Draw math problem interface
         drawMathProblem();
     }
 }
 
 void moveImage() {
-    imageX += imageSpeed * directionX;
-    imageY += imageSpeed * directionY;
+    // Create new transformation matrix
+    transformMatrix = new PMatrix2D();
     
-    // Bounce off walls
+    // Apply translation (movement)
+    float newX = imageX + imageSpeed * directionX;
+    float newY = imageY + imageSpeed * directionY;
+    
+    // Apply rotation (subtle rotation during movement)
+    angle += 0.01 * (currentLevel + 1);  // Rotation speed increases with level
+    
+    // Apply scaling based on movement direction
+    scaleX = 1.0 + sin(frameCount * 0.05) * 0.1;  // Subtle pulsing effect
+    scaleY = 1.0 + cos(frameCount * 0.05) * 0.1;
+    
+    // Combine transformations
+    transformMatrix.translate(newX, newY);
+    transformMatrix.rotate(angle);
+    transformMatrix.scale(scaleX, scaleY);
+    
+    // Update position
+    imageX = newX;
+    imageY = newY;
+    
+    // Bounce off walls with transformation adjustment
     if (imageX <= 0 || imageX >= width - 200) {
         directionX *= -1;
+        // Add slight scale distortion on bounce
+        scaleX *= 1.2;
+        scaleY *= 0.8;
     }
     if (imageY <= 0 || imageY >= height - 200) {
         directionY *= -1;
+        // Add slight scale distortion on bounce
+        scaleY *= 1.2;
+        scaleX *= 0.8;
     }
+    
+    // Apply the transformation when drawing
+    pushMatrix();
+    applyMatrix(transformMatrix);
+    image(images[currentImage], 0, 0, 100, 100);  // Draw at origin since transform handles position
+    popMatrix();
 }
 
 void drawMathProblem() {
@@ -378,9 +414,8 @@ void drawLevelButtons() {
 }
 
 void mousePressed() {
-  if (sessionExpired || blocked) return;
+    if (sessionExpired || blocked) return;
     
-    // Check for rapid clicking
     int currentTime = millis();
     if (currentTime - lastClickTime < minimumClickInterval) {
         blocked = true;
@@ -389,7 +424,6 @@ void mousePressed() {
     }
     lastClickTime = currentTime;
     
-    // Check total attempts
     if (totalAttempts >= maxAttempts) {
         blocked = true;
         blockStartTime = millis();
@@ -408,14 +442,18 @@ void mousePressed() {
     }
     
     if (!showMathProblem) {
-        // Check if user clicked on the moving image
-        if (mouseX >= imageX && mouseX <= imageX + 100 &&
-            mouseY >= imageY && mouseY <= imageY + 100) {
+        // Only check clicks on the rotating image
+        float transformedX = mouseX - imageX;
+        float transformedY = mouseY - imageY;
+        float rotatedX = transformedX * cos(-angle) - transformedY * sin(-angle);
+        float rotatedY = transformedX * sin(-angle) + transformedY * cos(-angle);
+        
+        if (rotatedX >= 0 && rotatedX <= 100 * scaleX &&
+            rotatedY >= 0 && rotatedY <= 100 * scaleY) {
             showMathProblem = true;
             generateMathProblem();
         }
     } else if (buttonHovered) {
-        // Check answer when submit button is clicked
         checkAnswer();
     }
     
