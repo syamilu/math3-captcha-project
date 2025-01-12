@@ -78,14 +78,6 @@ advanced-captcha/
 3. Open 'advanced_captcha.pde'
 4. Click the "Run" button (play icon) or press Ctrl+R (Cmd+R on Mac)
 
-### Alternative Run Method
-1. Open terminal/command prompt
-2. Navigate to project directory
-3. Run using Processing command line:
-   ```bash
-   processing-java --sketch=[path_to_sketch] --run
-   ```
-
 ## Usage Instructions
 
 1. **Starting the Application**
